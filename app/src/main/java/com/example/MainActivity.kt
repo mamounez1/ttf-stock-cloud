@@ -69,8 +69,6 @@ import com.example.ui.theme.MyApplicationTheme
 import com.example.viewmodel.AppViewModel
 import com.example.viewmodel.AppViewModelFactory
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.Dispatchers // زدت هادي باش نخدمو على الـ الخلفية
-import kotlinx.coroutines.withContext // زدت هادي لـ الـ سياق
 
 class MainActivity : ComponentActivity() {
 
@@ -125,15 +123,9 @@ fun MainWorkspace(
 
     var currentTab by remember { mutableStateOf("stock") }
 
-    // 🔄 التزامن المباشر والآمن من الـ MainActivity نيشان
+    // 🔄 التزامن الآمن عبر الـ ViewModel بلا مشاكل الـ private repository
     LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
-            try {
-                viewModel.repository.syncAllFromCloud()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+        viewModel.syncDataFromCloud()
     }
 
     val tabItems = remember(role) {
