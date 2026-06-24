@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding // تأكدنا من الـ Import هنا
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -68,7 +69,6 @@ import com.example.ui.theme.MyApplicationTheme
 import com.example.viewmodel.AppViewModel
 import com.example.viewmodel.AppViewModelFactory
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch // زدت هادي باش نقدروا نخدموا الكوروتين
 
 class MainActivity : ComponentActivity() {
 
@@ -86,7 +86,6 @@ class MainActivity : ComponentActivity() {
                 val uiEvents = viewModel.uiEvents
                 val activeReceipt by viewModel.activeReceipt.collectAsState()
 
-                // Reactive notification toasts
                 LaunchedEffect(key1 = uiEvents) {
                     uiEvents.collectLatest { msg ->
                         Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
@@ -94,10 +93,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (currentUser == null) {
-                    // Portal screen container
                     LoginScreen(viewModel = viewModel)
                 } else {
-                    // Full stock manager workspace
                     MainWorkspace(
                         viewModel = viewModel,
                         activeReceipt = activeReceipt,
@@ -126,18 +123,11 @@ fun MainWorkspace(
 
     var currentTab by remember { mutableStateOf("stock") }
 
-    // 🔄 الـتـزامـن الـتـلـقـائي مّـلـي كـايـتـفـتـح الـتـطـبـيـق
+    // 🔄 عيطنا للدالة الجديدة لداخل الـ ViewModel نيشان بلا مشاكل Private
     LaunchedEffect(Unit) {
-        launch {
-            try {
-                viewModel.repository.syncAllFromCloud()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+        viewModel.syncCloudData()
     }
 
-    // Map role-based visible bottom bar items
     val tabItems = remember(role) {
         val list = mutableListOf<TabItem>()
         list.add(TabItem("stock", "Stock", Icons.Default.Inventory))
