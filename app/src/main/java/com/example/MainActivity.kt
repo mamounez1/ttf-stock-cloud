@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding // تأكدنا من الـ Import هنا
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,6 +69,8 @@ import com.example.ui.theme.MyApplicationTheme
 import com.example.viewmodel.AppViewModel
 import com.example.viewmodel.AppViewModelFactory
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.Dispatchers // زدت هادي باش نخدمو على الـ الخلفية
+import kotlinx.coroutines.withContext // زدت هادي لـ الـ سياق
 
 class MainActivity : ComponentActivity() {
 
@@ -123,9 +125,15 @@ fun MainWorkspace(
 
     var currentTab by remember { mutableStateOf("stock") }
 
-    // 🔄 عيطنا للدالة الجديدة لداخل الـ ViewModel نيشان بلا مشاكل Private
+    // 🔄 التزامن المباشر والآمن من الـ MainActivity نيشان
     LaunchedEffect(Unit) {
-        viewModel.syncCloudData()
+        withContext(Dispatchers.IO) {
+            try {
+                viewModel.repository.syncAllFromCloud()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     val tabItems = remember(role) {
