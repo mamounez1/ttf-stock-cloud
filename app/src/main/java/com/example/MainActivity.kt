@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,6 +68,7 @@ import com.example.ui.theme.MyApplicationTheme
 import com.example.viewmodel.AppViewModel
 import com.example.viewmodel.AppViewModelFactory
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch // زدت هادي باش نقدروا نخدموا الكوروتين
 
 class MainActivity : ComponentActivity() {
 
@@ -126,30 +126,34 @@ fun MainWorkspace(
 
     var currentTab by remember { mutableStateOf("stock") }
 
+    // 🔄 الـتـزامـن الـتـلـقـائي مّـلـي كـايـتـفـتـح الـتـطـبـيـق
+    LaunchedEffect(Unit) {
+        launch {
+            try {
+                viewModel.repository.syncAllFromCloud()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     // Map role-based visible bottom bar items
     val tabItems = remember(role) {
         val list = mutableListOf<TabItem>()
-        // 'stock' is visible universally
         list.add(TabItem("stock", "Stock", Icons.Default.Inventory))
 
-        // 'contacts' is visible for User and Admin
         if (role == "admin" || role == "user") {
             list.add(TabItem("contacts", "Contacts", Icons.Default.Business))
         }
 
-        // 'entries' and 'exits' are visible for User and Admin
         if (role == "admin" || role == "user") {
             list.add(TabItem("entries", "Entrées", Icons.Default.Input))
             list.add(TabItem("exits", "Sorties", Icons.Default.LocalShipping))
         }
 
-        // 'locations' visible universally
         list.add(TabItem("locations", "Placements", Icons.Default.QrCode))
-
-        // 'comptage' visible universally
         list.add(TabItem("comptage", "Comptage", Icons.Default.Assessment))
 
-        // 'users' is only visible if Admin
         if (role == "admin") {
             list.add(TabItem("users", "Opérateurs", Icons.Default.Group))
         }
@@ -157,7 +161,6 @@ fun MainWorkspace(
         list
     }
 
-    // Double-check tab coherence upon switching roles
     LaunchedEffect(key1 = role) {
         if (tabItems.none { it.id == currentTab }) {
             currentTab = "stock"
@@ -167,7 +170,6 @@ fun MainWorkspace(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            // Stylized workspace header with Marlin branding and Logout button
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -226,13 +228,12 @@ fun MainWorkspace(
             }
         },
         bottomBar = {
-            // Adaptive custom Bottom Nav
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.surface,
                 tonalElevation = 4.dp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding() // Keep safe from Android system gesture bar pill!
+                    .navigationBarsPadding()
                     .testTag("bottom_nav_bar")
             ) {
                 tabItems.forEach { item ->
@@ -266,7 +267,6 @@ fun MainWorkspace(
             }
         }
     ) { innerPadding ->
-        // Workspace tab host transition wrapper
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -284,7 +284,6 @@ fun MainWorkspace(
         }
     }
 
-    // Printable Document Overlay trigger
     activeReceipt?.let { doc ->
         ReceiptOverlay(viewModel = viewModel, receipt = doc)
     }
