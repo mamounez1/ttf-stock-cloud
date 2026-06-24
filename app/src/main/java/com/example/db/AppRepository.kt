@@ -18,6 +18,59 @@ class AppRepository(private val appDao: AppDao) {
     private val mediaType = "application/json; charset=utf-8".toMediaType()
 
     // ----------------------------------------------------------------
+    // GLOBAL SYNC FUNCTION (App Call this on Start or Refresh)
+    // ----------------------------------------------------------------
+    suspend fun syncAllFromCloud() = withContext(Dispatchers.IO) {
+        try {
+            // 1. Sync Users
+            fetchListFromCloud<User>("users")?.let { cloudUsers ->
+                cloudUsers.forEach { appDao.insertUser(it) }
+            }
+            // 2. Sync Articles
+            fetchListFromCloud<Article>("articles")?.let { cloudArticles ->
+                cloudArticles.forEach { appDao.insertArticle(it) }
+            }
+            // 3. Sync Contacts
+            fetchListFromCloud<Contact>("contacts")?.let { cloudContacts ->
+                cloudContacts.forEach { appDao.insertContact(it) }
+            }
+            // 4. Sync Stock Entries
+            fetchListFromCloud<StockEntry>("stock_entries")?.let { cloudEntries ->
+                cloudEntries.forEach { appDao.insertStockEntry(it) }
+            }
+            // 5. Sync Stock Exits
+            fetchListFromCloud<StockExit>("stock_exits")?.let { cloudExits ->
+                cloudExits.forEach { appDao.insertStockExit(it) }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private inline fun <reified T> fetchListFromCloud(tableName: String): List<T>? {
+        return try {
+            val request = Request.Builder()
+                .url("${SupabaseConfig.URL}/rest/v1/$tableName?select=*")
+                .addHeader("apikey", SupabaseConfig.ANON_KEY)
+                .addHeader("Authorization", "Bearer ${SupabaseConfig.ANON_KEY}")
+                .get()
+                .build()
+            val response = client.newCall(request).execute()
+            if (response.isSuccessful) {
+                val jsonString = response.body?.string() ?: return null
+                val type = Types.newParameterizedType(List::class.java, T::class.java)
+                moshi.adapter<List<T>>(type).fromJson(jsonString)
+            } else {
+                response.close()
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    // ----------------------------------------------------------------
     // USERS (Cloud + Local Sync)
     // ----------------------------------------------------------------
     val allUsersFlow: Flow<List<User>> = appDao.getAllUsersFlow()
@@ -27,8 +80,9 @@ class AppRepository(private val appDao: AppDao) {
 
     suspend fun insertUser(user: User): Long = withContext(Dispatchers.IO) {
         try {
-            val json = moshi.adapter(User::class.java).toJson(user)
-            val body = json.toRequestBody(mediaType)
+            // نرسلو البيانات بلا الـ ID باش Supabase يتكلف بالترتيب وما يوقعش تعارض
+            val jsonPayload = "{\"username\":\"${user.username}\",\"full_name\":\"${user.fullName}\",\"role\":\"${user.role}\",\"password_hash\":\"${user.passwordHash}\"}"
+            val body = jsonPayload.toRequestBody(mediaType)
             val request = Request.Builder()
                 .url("${SupabaseConfig.URL}/rest/v1/users")
                 .addHeader("apikey", SupabaseConfig.ANON_KEY)
@@ -95,8 +149,8 @@ class AppRepository(private val appDao: AppDao) {
 
     suspend fun insertArticle(article: Article): Long = withContext(Dispatchers.IO) {
         try {
-            val json = moshi.adapter(Article::class.java).toJson(article)
-            val body = json.toRequestBody(mediaType)
+            val jsonPayload = "{\"reference\":\"${article.reference}\",\"name\":\"${article.name}\",\"description\":\"${article.description}\",\"quantity\":${article.quantity}}"
+            val body = jsonPayload.toRequestBody(mediaType)
             val request = Request.Builder()
                 .url("${SupabaseConfig.URL}/rest/v1/articles")
                 .addHeader("apikey", SupabaseConfig.ANON_KEY)
@@ -143,8 +197,8 @@ class AppRepository(private val appDao: AppDao) {
 
     suspend fun insertContact(contact: Contact): Long = withContext(Dispatchers.IO) {
         try {
-            val json = moshi.adapter(Contact::class.java).toJson(contact)
-            val body = json.toRequestBody(mediaType)
+            val jsonPayload = "{\"name\":\"${contact.name}\",\"type\":\"${contact.type}\",\"phone\":\"${contact.phone}\",\"email\":\"${contact.email}\",\"address\":\"${contact.address}\"}"
+            val body = jsonPayload.toRequestBody(mediaType)
             val request = Request.Builder()
                 .url("${SupabaseConfig.URL}/rest/v1/contacts")
                 .addHeader("apikey", SupabaseConfig.ANON_KEY)
@@ -185,7 +239,7 @@ class AppRepository(private val appDao: AppDao) {
     }
 
     // ----------------------------------------------------------------
-    // FLOWS & LOCAL-ONLY FALLBACK FOR TRANSACTIONS
+    // FLOWS & TRANSACTIONS
     // ----------------------------------------------------------------
     val allStockEntriesFlow: Flow<List<StockEntry>> = appDao.getAllStockEntriesFlow()
     val allStockExitsFlow: Flow<List<StockExit>> = appDao.getAllStockExitsFlow()
@@ -227,10 +281,25 @@ class AppRepository(private val appDao: AppDao) {
             productionDate = productionDate,
             emballageDate = emballageDate
         )
+        
+        // إرسال الـ Entry لـ Supabase
+        withContext(Dispatchers.IO) {
+            try {
+                val json = moshi.adapter(StockEntry::class.java).toJson(entry)
+                val body = json.toRequestBody(mediaType)
+                val request = Request.Builder()
+                    .url("${SupabaseConfig.URL}/rest/v1/stock_entries")
+                    .addHeader("apikey", SupabaseConfig.ANON_KEY)
+                    .addHeader("Authorization", "Bearer ${SupabaseConfig.ANON_KEY}")
+                    .post(body)
+                    .build()
+                client.newCall(request).execute().close()
+            } catch (e: Exception) { e.printStackTrace() }
+        }
+
         appDao.insertStockEntry(entry)
         appDao.updateArticleQuantity(articleId, quantity)
 
-        // Sync article quantity changes automatically to cloud
         val article = appDao.getArticleById(articleId)
         if (article != null) {
             updateArticle(article.id, article.reference, article.name, article.description)
@@ -265,10 +334,25 @@ class AppRepository(private val appDao: AppDao) {
             productionDate = productionDate,
             emballageDate = emballageDate
         )
+
+        // إرسال الـ Exit لـ Supabase
+        withContext(Dispatchers.IO) {
+            try {
+                val json = moshi.adapter(StockExit::class.java).toJson(exit)
+                val body = json.toRequestBody(mediaType)
+                val request = Request.Builder()
+                    .url("${SupabaseConfig.URL}/rest/v1/stock_exits")
+                    .addHeader("apikey", SupabaseConfig.ANON_KEY)
+                    .addHeader("Authorization", "Bearer ${SupabaseConfig.ANON_KEY}")
+                    .post(body)
+                    .build()
+                client.newCall(request).execute().close()
+            } catch (e: Exception) { e.printStackTrace() }
+        }
+
         appDao.insertStockExit(exit)
         appDao.updateArticleQuantity(articleId, -quantity)
 
-        // Sync article quantity changes automatically to cloud
         val article = appDao.getArticleById(articleId)
         if (article != null) {
             updateArticle(article.id, article.reference, article.name, article.description)
