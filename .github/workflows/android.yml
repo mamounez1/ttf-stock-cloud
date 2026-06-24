@@ -19,7 +19,6 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
-    # توليد ملفات الـ Wrapper تلقائياً داخل السيرفور
     - name: Generate Gradle Wrapper
       run: gradle wrapper
 
@@ -30,7 +29,8 @@ jobs:
       run: chmod +x gradlew
 
     - name: Build with Gradle
-      run: ./gradlew assembleDebug
+      # هاد السطر فيه الحل السحري لمنع الـ NullPointerException ديال الـ KSP
+      run: ./gradlew assembleDebug -Djava.awt.headless=true
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
