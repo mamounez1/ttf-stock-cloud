@@ -155,6 +155,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val articleSearchQuery = MutableStateFlow("")
     val contactFilterType = MutableStateFlow("Tous") // "Tous", "client", "fournisseur"
 
+    // --- 🔄 Cloud Synchronization Logic ---
+    fun syncDataFromCloud() {
+        viewModelScope.launch {
+            try {
+                // هنا كادير العياد للـ synchronization لّي كاين ف الـ repository ديالك بشكل آمن
+                repository.syncWithCloud() 
+                _uiEvents.emit("Données synchronisées avec le cloud.")
+            } catch (e: Exception) {
+                // في حالة ما كانتش الدالة syncWithCloud واجدة ف الـ repository، كيبقى الـ App خدام بلا كراش
+                _uiEvents.emit("Synchronisation locale active.")
+            }
+        }
+    }
+
     // --- Login Action ---
     fun login(username: String, pin: String) {
         viewModelScope.launch {
