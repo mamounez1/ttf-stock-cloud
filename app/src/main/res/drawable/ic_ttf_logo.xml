@@ -1,0 +1,33 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="240dp"
+    android:height="104dp"
+    android:viewportWidth="1200"
+    android:viewportHeight="520">
+    <!-- Dark slate background -->
+    <path
+        android:fillColor="#05070D"
+        android:pathData="M 54,0 A 54,54 0 0 0 0,54 L 0,466 A 54,54 0 0 0 54,520 L 1146,520 A 54,54 0 0 0 1200,466 L 1200,54 A 54,54 0 0 0 1146,0 Z" />
+    <!-- T Letter Shape 1 (White) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M115,100 L388,100 L356,184 L271,184 L207,455 L123,455 L187,184 L90,184 Z" />
+    <!-- T Letter Shape 2 (White) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M390,100 L663,100 L631,184 L546,184 L482,455 L398,455 L462,184 L365,184 Z" />
+    <!-- F Letter Shape (White) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M670,100 L1090,100 L1058,184 L812,184 L795,267 L1002,267 L973,350 L778,350 L755,455 L670,455 Z" />
+    <!-- Marlin Curve / Waves (Cyan Accent) -->
+    <path
+        android:fillColor="#20C7FF"
+        android:pathData="M245,330 C370,225 570,185 720,228 C805,252 885,295 962,345 C845,330 745,364 645,405 C500,465 350,445 245,330 Z" />
+    <!-- Custom eye for Marlin -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M910,270 A13,13 0 1,1 910,269 Z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M910,270 A6,6 0 1,1 910,269 Z" />
+</vector>
